@@ -11,6 +11,13 @@ error EndTimeInPast();
 error ClaimWindowFinished();
 error NoWithdrawDuringClaim();
 
+interface IMerkleDistributor {
+    function token() external view returns (address);
+    function merkleRoot() external view returns (bytes32);
+    function isClaimed(uint256 index) external view returns (bool);
+    function claim(uint256 index, address account, uint256 amount, bytes32[] calldata merkleProof, address recipient) external;
+}
+
 /*
 MerkleDistributorWithDeadline with additional features:
     - owner can update recipient
@@ -78,10 +85,14 @@ contract MerkleDistributorForContracts is IMerkleDistributor, Ownable {
         emit ClaimedTo(index, account, amount, recipient);
     }
 
-    function setRecipient(address account, address recipient) external onlyOwner {
-        require(recipient != address(0), 'invalid recipient');
-        recipients[account] = recipient;
-        emit RecipientSet(account, recipient);
+    function setRecipients(address[] calldata _accounts, address[] calldata _recipients) external onlyOwner {
+        require(_accounts.length == _recipients.length, 'invalid lengths');
+
+        for (uint256 i = 0; i < _accounts.length; i++){
+            require(_recipients[i] != address(0), 'invalid recipient');
+            recipients[_accounts[i]] = _recipients[i];
+            emit RecipientSet(_accounts[i], _recipients[i]);
+        }
     }
 
     function withdraw() external onlyOwner {
