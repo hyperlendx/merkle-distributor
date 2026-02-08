@@ -10,6 +10,9 @@ error InvalidProof();
 error EndTimeInPast();
 error ClaimWindowFinished();
 error NoWithdrawDuringClaim();
+error ClaimerNotAuthorized();
+error InvalidRecipient();
+error InvalidLength();
 
 interface IMerkleDistributor {
     function token() external view returns (address);
@@ -65,7 +68,7 @@ contract MerkleDistributorForContracts is IMerkleDistributor, Ownable {
     {
         if (block.timestamp > endTime) revert ClaimWindowFinished();
         if (isClaimed(index)) revert AlreadyClaimed();
-        require(msg.sender == account || msg.sender == recipients[account], 'msg.sender not authorized');
+        if (msg.sender != account && msg.sender != recipients[account]) revert ClaimerNotAuthorized();
         
         // Verify the merkle proof.
         bytes32 node = keccak256(abi.encodePacked(index, account, amount));
@@ -76,7 +79,7 @@ contract MerkleDistributorForContracts is IMerkleDistributor, Ownable {
 
         // Send tokens to recipient instead of account
         if (recipients[account] != address(0)){
-            require(recipient == recipients[account], 'invalid recipient'); //double check that recipient set by owner is the one claimer wants to use
+            if (recipient != recipients[account]) revert InvalidRecipient(); //double check that recipient set by owner is the one claimer wants to use
             IERC20(token).safeTransfer(recipients[account], amount);
         } else {
             IERC20(token).safeTransfer(account, amount);
@@ -86,10 +89,10 @@ contract MerkleDistributorForContracts is IMerkleDistributor, Ownable {
     }
 
     function setRecipients(address[] calldata _accounts, address[] calldata _recipients) external onlyOwner {
-        require(_accounts.length == _recipients.length, 'invalid lengths');
+        if (_accounts.length != _recipients.length) revert InvalidLength();
 
         for (uint256 i = 0; i < _accounts.length; i++){
-            require(_recipients[i] != address(0), 'invalid recipient');
+            if (_recipients[i] == address(0)) revert InvalidRecipient();
             recipients[_accounts[i]] = _recipients[i];
             emit RecipientSet(_accounts[i], _recipients[i]);
         }
