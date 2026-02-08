@@ -78,7 +78,7 @@ contract MerkleDistributorForContracts is IMerkleDistributor, Ownable {
         _setClaimed(index);
 
         // Send tokens to recipient instead of account
-        if (recipients[account] != address(0)){
+        if (recipients[account] != address(0) && recipient != address(0)){
             if (recipient != recipients[account]) revert InvalidRecipient(); //double check that recipient set by owner is the one claimer wants to use
             IERC20(token).safeTransfer(recipients[account], amount);
         } else {
